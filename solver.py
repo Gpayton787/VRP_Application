@@ -4,9 +4,8 @@ import requests
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import sys
+import config
 
-
-API_KEY = 'AIzaSyDBXpCSJ8LUqKGm8ZVoag95RLZprjwzNbY'
 file_path = "trips.pdf"
 
 
@@ -52,7 +51,7 @@ def create_distance_matrix(addresses):
     origins = '|'.join(encoded)
     test_origins = '|'.join(test_addresses)
 
-    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?destinations={origins}&origins={origins}&units=imperial&key={API_KEY}"
+    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?destinations={origins}&origins={origins}&units=imperial&key={config.API_KEY}"
 
     #Send request
     response = requests.get(url)
