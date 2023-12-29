@@ -4,15 +4,26 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pdf_extracter import create_trip_dict
 
-trip_dict = create_trip_dict("trips.pdf")
-print (len(trip_dict))
-G = nx.DiGraph()
-for trip in trip_dict:
-    G.add_node(trip["id"], name=trip["name"], pick_up_time=trip["pick_up_time"], pick_up_location=trip["pick_up_location"], drop_off_time=trip["drop_off_time"], drop_off_location=trip["drop_off_location"])
+data = create_trip_dict("trips.pdf")
+trip_dict = data["trips"]
+# print(trip_dict)
 
-pos = nx.spring_layout(G)  # Define the positions of nodes
-nx.draw(G, pos, with_labels=True, node_size=500, node_color='skyblue', font_weight='bold', arrows=True)
-plt.title("Vehicle Routing Problem Graph")
+G = nx.DiGraph()
+
+for i, trip in enumerate(trip_dict):
+    G.add_node(i, pick_up = (trip["pick_up_time"], trip["pick_up_location"]))
+    G.add_node((i+0.1), drop_off = (trip["drop_off_time"], trip["drop_off_location"]))
+    G.add_weighted_edges_from([(i, (i+0.1), 5)])
+
+print(len(trip_dict))
+print(G)
+
+    
+# Add nodes and edges
+plt.figure(figsize=(6, 4))
+pos = nx.circular_layout(G)  # Positions nodes in a circular layout
+labels = nx.get_edge_attributes(G, 'weight')  # Get edge weights as labels
+nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=800, arrows=True)
+nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)  # Display edge weights
+plt.title('Directed Graph with Weighted Edges')
 plt.show()
-plt.savefig("graph.png")
-plt.close()
