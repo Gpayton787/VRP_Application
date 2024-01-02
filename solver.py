@@ -1,117 +1,38 @@
-import urllib.parse
-from pdf_extracter import create_trip_dict
-import requests
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import sys
-import config
+from pdf_extracter import create_trip_dict
+from utils.helper import create_matrix, create_node_mapping, get_coordinates
 
+#Define instance variables
 file_path = "trips.pdf"
-
-
-def encode_adresses(adresses):
-    #Encodes adresses to valid URL
-    adresses = [urllib.parse.quote(adress) for adress in adresses]
-    return adresses
-
-def create_node_mapping(edges):
-    extra_nodes = 0
-    #map duplicate nodes to their actual location
-    node_to_index = {}
-    new_edges = []
-    seen = set()
-    for i, edge in enumerate(edges):
-        #check for and process duplicate nodes
-        new_edge = []
-        if edge[0] not in seen:
-            seen.add(edge[0])
-            new_edge.append(edge[0])
-        else:
-            extra_nodes += 1
-            node_to_index[len(seen)+extra_nodes] = edge[0]
-            new_edge.append(len(seen)+extra_nodes)
-            #extra_nodes + len(seen) is the index of the duplicate node which corresponds to the actual node
-        if edge[1] not in seen:
-            seen.add(edge[1])
-            new_edge.append(edge[1])
-        else:
-            extra_nodes += 1
-            node_to_index[len(seen)+extra_nodes] = edge[1]
-            new_edge.append(len(seen)+extra_nodes)
-        new_edges.append(new_edge)
-    return new_edges, node_to_index
-
-def create_distance_matrix(addresses):
-
-    encoded = encode_adresses(addresses)
-
-    test_addresses = ["16920 Glen Oak Run, Derwood, MD", "19225 Montgomery Village Ave, Montgomery Village, MD", "8201 Emory Grove Rd, Gaithersburg, MD"]
-
-    #Construct request URL
-    origins = '|'.join(encoded)
-    test_origins = '|'.join(test_addresses)
-
-    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?destinations={origins}&origins={origins}&units=imperial&key={config.API_KEY}"
-
-    #Send request
-    response = requests.get(url)
-
-    matrix = []
-
-    #Process response
-    if response.status_code == 200:
-        print(response.status_code)
-
-        for row in response.json()["rows"]:
-            matrix_row = []
-            for element in row["elements"]:
-                matrix_row.append(element["distance"]["value"])
-            matrix.append(matrix_row)
-    else:
-        print("Error: ", response.status_code)
-    return matrix
+num_vehicles = 4
+capacity = 3
 
 def create_data_model():
     #Stores problem data
     raw_data = create_trip_dict(file_path)
     data = {}
-    data["distance_matrix"] = create_distance_matrix(raw_data["addresses"])
-    data["num_vehicles"] = 1
+    data["addresses"] = raw_data["addresses"]
+    data["matrix"] = create_matrix(raw_data["addresses"], 'time')
+    data["num_vehicles"] = num_vehicles
     data["depot"] = 0
-    edges, node_map = create_node_mapping(raw_data["edges"])
-    data["pickups_deliveries"] = edges
-    data["node_map"] = node_map
+    node_data = create_node_mapping(raw_data["edges"])
+    data["pickups_deliveries"] = node_data["new_edges"]
+    data["node_map"] = node_data["node_to_index"]
+    data["num_nodes"] = node_data["num_nodes"]
+    data["node_to_index"] = node_data["node_to_index"]
+    data["demands"] = node_data["node_to_demand"]
+    data["vehicle_capacities"] = capacity
+    data["time_windows"] = raw_data["time_windows"]
+
     return data
-
-
-def print_solution(data, manager, routing, solution):
-    #Prints solution on console
-    print(f"Objective: {solution.ObjectiveValue()}")
-    total_distance = 0
-    for vehicle_id in range(data["num_vehicles"]):
-        index = routing.Start(vehicle_id)
-        plan_output = f"Route for vehicle {vehicle_id}:\n"
-        route_distance = 0
-        while not routing.IsEnd(index):
-            plan_output += f" {manager.IndexToNode(index)} -> "
-            previous_index = index
-            index = solution.Value(routing.NextVar(index))
-            route_distance += routing.GetArcCostForVehicle(
-                previous_index, index, vehicle_id
-            )
-        plan_output += f"{manager.IndexToNode(index)}\n"
-        plan_output += f"Distance of the route: {route_distance}m\n"
-        print(plan_output)
-        total_distance += route_distance
-    print(f"Total Distance of all routes: {total_distance}m")
 
 def main():
 
     #Instantiate the data 
     data = create_data_model()
-    print(data["edges"])
-    print(data["node_map"])
-
+    print(data["matrix"])
     return 
 
     #Create the routing index manager
@@ -171,8 +92,5 @@ def main():
         print_solution(data, manager, routing, solution)
     print(data)
     
-    
-
-
 if __name__ == "__main__":
     main()

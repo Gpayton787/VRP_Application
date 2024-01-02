@@ -1,40 +1,7 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import sys
-
-def create_node_mapping(edges):
-    #map duplicate nodes to their actual location
-    node_to_index = {}
-    #Record whether a node is a pick-up or drop-off
-    node_to_demand = {} #Can be either 1 or -1
-    node_to_demand[0] = 0
-    new_edges = []
-    #Keep track of indexes
-    seen = set()
-    for i, edge in enumerate(edges):
-        #check for and process duplicate nodes
-        new_edge = []
-        if edge[0] not in seen:
-            seen.add(edge[0])
-            new_edge.append(edge[0])
-        else:
-            #len of seen plus 1 is the new index
-            index = len(seen)+1
-            seen.add(index)
-            node_to_index[index] = edge[0]
-            new_edge.append(index)
-        node_to_demand[new_edge[-1]] = 1
-        if edge[1] not in seen:
-            seen.add(edge[1])
-            new_edge.append(edge[1])
-        else:
-            index = len(seen)+1
-            seen.add(index)
-            node_to_index[index] = edge[1]
-            new_edge.append(index)
-        node_to_demand[new_edge[-1]] = -1
-        new_edges.append(new_edge)
-    return new_edges, node_to_index, len(seen), node_to_demand
+from utils.helper import create_node_mapping
 
 def create_data_model():
     """Stores the data for the problem."""
@@ -58,12 +25,11 @@ def create_data_model():
         [1, 2], [3, 4], [4, 3], [2, 1], [5, 4], [4, 5], [6, 2], [2, 6], [7, 8], [9, 2], [8, 7], [2, 9]
     ]
 
-    new_edges, node_to_index, num_nodes, node_to_demand = create_node_mapping(edges)
-    data["pickups_deliveries"] = new_edges
-    data["node_to_index"] = node_to_index
-    #Add one to account for 0 index (depot)
-    data["num_nodes"] = num_nodes+1
-    data["demands"] = node_to_demand
+    node_data = create_node_mapping(edges)
+    data["pickups_deliveries"] = node_data["new_edges"]
+    data["node_to_index"] = node_data["node_to_index"]
+    data["num_nodes"] = node_data["num_nodes"]
+    data["demands"] = node_data["node_to_demand"]
     data["vehicle_capacities"] = 3
     data["num_vehicles"] = 4
     data["depot"] = 0
