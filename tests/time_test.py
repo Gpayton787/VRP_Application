@@ -1,18 +1,21 @@
+"""Vehicles Routing Problem (VRP) with Time Windows."""
+
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
+from utils.helper import create_node_mapping, get_coordinates
+from pdf_extractor import create_trip_dict
 import sys
+import math
 
-from utils.helper import create_node_mapping
-from utils.time import seconds_to_standard, standard_to_seconds
 
 def create_data_model():
     """Stores the data for the problem."""
+    # raw_data = create_trip_dict("trips.pdf")
     data = {}
-
-    data["matrix"] = [
-        # fmt: off
-        [0, 1256, 2012, 165, 2364, 1132, 270, 2141, 2087, 1890],
-        [1278, 0, 1474, 1129, 2340, 317, 1139, 1603, 1549, 1352],
+    # data["addresses"] = raw_data["addresses"]
+    data["time_matrix"] = [
+        [0, 1256, 2012, 165, 2364, 1132, 270, 2141, 2087, 1890], 
+        [1278, 0, 1474, 1129, 2340, 317, 1139, 1603, 1549, 1352], 
         [2014, 1484, 0, 1880, 2827, 1573, 1937, 422, 1103, 571], 
         [133, 1160, 1881, 0, 2359, 1043, 159, 2011, 1956, 1760], 
         [2383, 2359, 2873, 2393, 0, 2517, 2384, 3002, 2936, 2751], 
@@ -21,29 +24,34 @@ def create_data_model():
         [2117, 1587, 558, 1983, 2929, 1675, 2039, 0, 1362, 726], 
         [2164, 1634, 1107, 2030, 2968, 1722, 2087, 1378, 0, 942], 
         [1895, 1364, 569, 1760, 2707, 1453, 1817, 683, 874, 0]
-        # fmt: on
+    ]
+    #Convert to minutes
+    n = len(data["time_matrix"])
+    for i in range(n):
+        for j in range(n):
+            data["time_matrix"][i][j] = math.ceil(data["time_matrix"][i][j] / 60)
+
+    data["time_windows"] = [
+        [0, 100], [310, 370], [350, 410], 
+        [345, 405], [345, 405], [375, 435], 
+        [423, 483], [390, 450], [424, 484], 
+        [420, 480], [472, 532], [525, 585], 
+        [575, 635], [765, 825], [771, 831], 
+        [780, 840], [845, 905], [350, 410], 
+        [382, 442], [360, 420], [382, 442], 
+        [395, 455], [426, 486], [435, 495], 
+        [454, 514]
     ]
     edges = [
         [1, 2], [3, 4], [4, 3], [2, 1], [5, 4], [4, 5], [6, 2], [2, 6], [7, 8], [9, 2], [8, 7], [2, 9]
     ]
-
     node_data = create_node_mapping(edges)
-    data["pickups_deliveries"] = node_data["new_edges"]
     data["node_to_index"] = node_data["node_to_index"]
     data["num_nodes"] = node_data["num_nodes"]
-    data["demands"] = node_data["node_to_demand"]
-    data["vehicle_capacities"] = 3
-    data["time_windows"] = [
-        [0, 6000], 
-        [18600, 20400], [21000, 22800], [20700, 22500], [20700, 22500], [22500, 24300], 
-        [25380, 27180], [23400, 25200], [25440, 27240], [25200, 27000], [28320, 30120], 
-        [31500, 33300], [34500, 36300], [45900, 47700], [46260, 48060], [46800, 48600], 
-        [50700, 52500], [21000, 22800], [22920, 24720], [21600, 23400], [22920, 24720], 
-        [23700, 25500], [25560, 27360], [26100, 27900], [27240, 29040]
-        ]
-    data["num_vehicles"] = 8
+    data["num_vehicles"] = 4
     data["depot"] = 0
     return data
+
 
 def print_solution(data, manager, routing, solution):
     """Prints solution on console."""
@@ -71,12 +79,18 @@ def print_solution(data, manager, routing, solution):
         total_time += solution.Min(time_var)
     print(f"Total time of all routes: {total_time}min")
 
+
 def main():
-    """Entry point of the program."""
+    """Solve the VRP with time windows."""
     # Instantiate the data problem.
 
     data = create_data_model()
-  
+    print("Length of Distance Matrix: ", len(data["time_matrix"]))
+    print("Length of Pickups and Deliveries: ", len(data["pickups_deliveries"]))
+    print("Length of Node to Index: ", len(data["node_to_index"]))
+    print("Length of time windows: ", len(data["time_windows"]))
+    return
+
     # Create the routing index manager.
     manager = pywrapcp.RoutingIndexManager(
         data["num_nodes"], data["num_vehicles"], data["depot"]
@@ -85,39 +99,22 @@ def main():
     # Create Routing Model.
     routing = pywrapcp.RoutingModel(manager)
 
-
     # Create and register a transit callback.
     def time_callback(from_index, to_index):
         """Returns the travel time between the two nodes."""
         # Convert from routing variable Index to time matrix NodeIndex.
         from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
         if from_node in data["node_to_index"]:
             from_node = data["node_to_index"][from_node]
+        to_node = manager.IndexToNode(to_index)
         if to_node in data["node_to_index"]:
             to_node = data["node_to_index"][to_node]
-        return data["matrix"][from_node][to_node]
+        return data["time_matrix"][from_node][to_node]
 
     transit_callback_index = routing.RegisterTransitCallback(time_callback)
 
     # Define cost of each arc.
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-
-    # Add Capacity constraint.
-    def demand_callback(from_index):
-        """Returns the demand of the node."""
-        # Convert from routing variable Index to demands NodeIndex.
-        from_node = manager.IndexToNode(from_index)
-        return data["demands"][from_node]
-
-    demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-    routing.AddDimension(
-        demand_callback_index,
-        0,  # null capacity slack
-        data["vehicle_capacities"],  # vehicle maximum capacities
-        True,  # start cumul to zero
-        "Capacity",
-    )
 
     # Add Time Windows constraint.
     time = "Time"
@@ -142,6 +139,7 @@ def main():
         time_dimension.CumulVar(index).SetRange(
             data["time_windows"][depot_idx][0], data["time_windows"][depot_idx][1]
         )
+
     # Instantiate route start and end times to produce feasible times.
     for i in range(data["num_vehicles"]):
         routing.AddVariableMinimizedByFinalizer(
@@ -149,22 +147,14 @@ def main():
         )
         routing.AddVariableMinimizedByFinalizer(time_dimension.CumulVar(routing.End(i)))
 
-
-    # Define Transportation Requests.
-    for request in data["pickups_deliveries"]:
-        pickup_index = manager.NodeToIndex(request[0])
-        delivery_index = manager.NodeToIndex(request[1])
-        routing.AddPickupAndDelivery(pickup_index, delivery_index)
-        routing.solver().Add(
-            routing.VehicleVar(pickup_index) == routing.VehicleVar(delivery_index)
-        )
-        routing.solver().Add(
-            time_dimension.CumulVar(pickup_index)
-            <= time_dimension.CumulVar(delivery_index)
-        )
+    # Allow to drop nodes.
+    penalty = 1000
+    for node in range(1, data["num_nodes"]):
+        routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
 
     # Setting first solution heuristic.
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+    search_parameters.time_limit.seconds = 30
     search_parameters.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     )
@@ -175,10 +165,6 @@ def main():
     # Print solution on console.
     if solution:
         print_solution(data, manager, routing, solution)
-        print(routing.status())
-    else:
-        print('no solution')
-        print(routing.status())
 
 
 if __name__ == "__main__":

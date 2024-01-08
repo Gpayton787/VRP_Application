@@ -1,6 +1,9 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import sys
+import math
+from matplotlib import pyplot as plt
+
 
 from utils.helper import create_node_mapping
 
@@ -32,6 +35,7 @@ def create_data_model():
     data["num_nodes"] = node_data["num_nodes"]
     data["num_vehicles"] = 4
     data["depot"] = 0
+
     return data
 
 
@@ -56,12 +60,31 @@ def print_solution(data, manager, routing, solution):
         total_distance += route_distance
     print(f"Total Distance of all routes: {total_distance}m")
 
+def get_routes(solution, routing, manager):
+    """Get vehicle routes from a solution and store them in an array."""
+    # Get vehicle routes and store them in a two dimensional array whose
+    # i,j entry is the jth location visited by vehicle i along its route.
+    routes = []
+    for route_nbr in range(routing.vehicles()):
+        index = routing.Start(route_nbr)
+        route = [manager.IndexToNode(index)]
+        while not routing.IsEnd(index):
+            index = solution.Value(routing.NextVar(index))
+            route.append(manager.IndexToNode(index))
+            routes.append(route)
+    return routes
+
 
 def main():
     """Entry point of the program."""
     # Instantiate the data problem.
     data = create_data_model()
-    print(data)
+    print("Length of Distance Matrix: ", len(data["distance_matrix"]))
+    print("Length of Pickups and Deliveries: ", len(data["pickups_deliveries"]))
+    print("Length of Node to Index: ", len(data["node_to_index"]))
+    print("Number of Nodes: ", data["num_nodes"])
+ 
+
 
 
     # Create the routing index manager.

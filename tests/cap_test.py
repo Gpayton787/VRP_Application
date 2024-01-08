@@ -1,7 +1,7 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import sys
-from utils.helper import create_node_mapping
+import utils.helper
 
 def create_data_model():
     """Stores the data for the problem."""
@@ -25,7 +25,7 @@ def create_data_model():
         [1, 2], [3, 4], [4, 3], [2, 1], [5, 4], [4, 5], [6, 2], [2, 6], [7, 8], [9, 2], [8, 7], [2, 9]
     ]
 
-    node_data = create_node_mapping(edges)
+    node_data = utils.helper.create_node_mapping(edges)
     data["pickups_deliveries"] = node_data["new_edges"]
     data["node_to_index"] = node_data["node_to_index"]
     data["num_nodes"] = node_data["num_nodes"]
