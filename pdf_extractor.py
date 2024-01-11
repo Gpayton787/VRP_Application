@@ -76,6 +76,7 @@ def create_trip_dict(path):
     raw_data["time_windows"] = time_windows
     raw_data["address_to_index"] = address_to_index
     raw_data["wcalls"] = wcalls
+    raw_data["file_name"] = path.split('.')[0]
     return raw_data
 
 def main():

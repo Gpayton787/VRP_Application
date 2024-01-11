@@ -19,6 +19,7 @@ def create_node_mapping(edges):
     node_data = {}
     #map duplicate nodes to their actual location
     node_to_index = {}
+    # map nodes to their corresponding trip
     node_to_trip = {}
     #Record whether a node is a pick-up or drop-off
     node_to_demand = {} #Can be either 1 or -1

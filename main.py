@@ -1,27 +1,29 @@
 #Imports
 from pdf_extractor import create_trip_dict
 from solver import create_data_model, solver
-from utils.helper import check_validity, create_matrix
-import numpy as np
+from utils.helper import check_validity
+from utils.pdf import create_pdf
+
+
 #Main entry point for the application
-
-
-
 def main():
     #Get user input
 
     #Parameters
-    file_path = "trips2.pdf"
+    file_path = "trips3.pdf"
     num_vehicles = 4
     capacity = 3
+    wheelchair = False
+    service_area = []
 
-
-
-    #Create the data model
+    #Extract data from pdf
     raw_data = create_trip_dict(file_path)
+    #Create the data model for the solver
     data = create_data_model(raw_data, num_vehicles, capacity)
+
+    #Process the data
     invalid_trips = check_validity(data["matrix"], data["address_to_index"], data["trips_dict"])
-    print(invalid_trips)
+    print("Invalid Trips: ", invalid_trips)
     #Fix invalid trips for the solver
     for trip in invalid_trips:
         id = trip[0]
@@ -36,9 +38,31 @@ def main():
         if mins > 0:
             #Add remaining minutes needed if there are any to the pickup time
             data["time_windows"][index*2+2][1] = data["time_windows"][index*2+2][1] + mins
-        print(data["time_windows"][index*2+2][1] - data["time_windows"][index*2+1][0])
     
-    solver(data)
+    #Call the solver
+    response = solver(data)
+    
+    #Print out the response data:
+    tot = len(data["trips_list"])
+    print("Total Trips: ", tot )
+    print(f"Dropped Trips ({len(response['dropped_trips'])}): {response['dropped_trips']}")
+    print("Trip assignments: ")
+    for i, route in enumerate(response["routes"]):
+        print(f"Route {i} Amount: {len(route)}")
+        print(route)
+    print("Trip sequences: ")
+    for i, instructions in enumerate(response["instructions"]):
+        print(f"Route {i} Instructions: ")
+        print(instructions) 
+        print("---"*10)
+
+    
+
+
+
+
+
+    
 
     return 
    

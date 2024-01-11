@@ -5,11 +5,16 @@ from pdf_extractor import create_trip_dict
 from utils.helper import create_matrix, create_node_mapping, get_coordinates
 from utils.time import minutes_to_standard
 import pickle
+import os
 
 #Define instance variables
 file_path = "trips.pdf"
 type_of_matrix = "time"
 height = 7
+
+def does_file_exist(path):
+    return os.path.exists(path)
+ 
 
 def index_to_trip_id(index, data):
     if index == 0:
@@ -43,7 +48,60 @@ def plot_solution(locations, solution, manager, routing, data):
         route = np.array(route)
         # Plot the route
         ax.plot(locations[route, 0], locations[route, 1], google_colors[vehicle_id], linewidth=3)
+        break
     plt.show()
+
+def create_response_object(data, manager, routing, solution):
+    #Get a list of dropped trips
+    dropped_trips = []
+    for node in range(routing.Size()):
+        if routing.IsStart(node) or routing.IsEnd(node):
+            continue
+        if solution.Value(routing.NextVar(node)) == node:
+            trip = index_to_trip_id(manager.IndexToNode(node), data)
+            if trip not in dropped_trips:
+                dropped_trips.append(trip)
+    #Get trip assignments
+    def get_routes(data, solution, routing, manager):
+        # Get vehicle routes and store them in a two dimensional array whose
+        # i,j entry is the jth location visited by vehicle i along its route.
+        routes = []
+        for route_nbr in range(routing.vehicles()):
+            index = routing.Start(route_nbr)
+            route = [index_to_trip_id(manager.IndexToNode(index), data)]
+            while not routing.IsEnd(index):
+                index = solution.Value(routing.NextVar(index))
+                trip = index_to_trip_id(manager.IndexToNode(index), data)
+                if trip not in route:
+                    route.append(trip)
+            routes.append(route)
+        return routes
+    
+    routes = get_routes(data, solution, routing, manager)
+
+    #Get route instructions
+    time_dimension = routing.GetDimensionOrDie("Time")
+    instructions = []
+    for vehicle_id in range(data["num_vehicles"]):
+        index = routing.Start(vehicle_id)
+        route_load = 0
+        route_instructions = []
+        while not routing.IsEnd(index):
+            time_var = time_dimension.CumulVar(index)
+            route_load += data["demands"][manager.IndexToNode(index)]
+            trip_id = index_to_trip_id(manager.IndexToNode(index), data)
+            time_window = [minutes_to_standard(solution.Min(time_var)), minutes_to_standard(solution.Max(time_var))]
+            load = route_load
+            route_instructions.append({"trip_id": trip_id, "time_window": time_window, "load": load})
+            #move to next node
+            index = solution.Value(routing.NextVar(index))
+        instructions.append(route_instructions)
+    response = {}
+    response["dropped_trips"] = dropped_trips
+    response["routes"] = routes
+    response["instructions"] = instructions
+
+    return response
 
 
 def print_solution(data, manager, routing, solution):
@@ -102,15 +160,26 @@ def create_data_model(raw_data, num_vehicles, capacity):
     data["demands"] = node_data["node_to_demand"]
     data["vehicle_capacities"] = capacity
     data["time_windows"] = raw_data["time_windows"]
-    # data["matrix"] = create_matrix(raw_data["addresses"], type_of_matrix)
-    # data["locations"] = get_coordinates(data["addresses"])
-    # Load the matrix from the binary file
-    with open('./test_data/matrix.pkl', 'rb') as file:
-        loaded_matrix = pickle.load(file)
-    with open('./test_data/locations.pkl', 'rb') as file:
-        loaded_locations = pickle.load(file)
-    data["matrix"] =loaded_matrix
-    data["locations"] = loaded_locations
+    #Check if matrix and locations have already been created
+    file_name = raw_data["file_name"]
+    matrix_path = './cache/' + file_name + '_matrix.pkl'
+    if does_file_exist(matrix_path):
+        with open(matrix_path, 'rb') as file:
+            data["matrix"] = pickle.load(file)
+    else:
+        data["matrix"] = create_matrix(raw_data["addresses"], type_of_matrix)
+        #pickle it
+        with open(matrix_path, 'wb') as file:
+            pickle.dump(data["matrix"], file)
+    locations_path = './cache/' + file_name + '_locations.pkl'
+    if does_file_exist(locations_path):
+        with open(locations_path, 'rb') as file:
+            data["locations"] = pickle.load(file)
+    else:
+        data["locations"] = get_coordinates(data["addresses"])
+        #pickle it
+        with open(locations_path, 'wb') as file:
+            pickle.dump(data["locations"], file)
     return data
 
 def solver(data):
@@ -211,16 +280,30 @@ def solver(data):
 
     # Solve the problem.
     solution = routing.SolveWithParameters(search_parameters)
-    print(solution)
 
     # Print solution on console.
+
+    #Prepare return data and return it in a dictionary
+    # return create_response_object(data, manager, routing, solution)
+
     if solution:
         print_solution(data, manager, routing, solution)
         print(routing.status())
-        plot_solution(data["locations"], solution, manager, routing, data)
+        # plot_solution(data["locations"], solution, manager, routing, data)
     else:
         print('no solution')
         print(routing.status())
+    return create_response_object(data, manager, routing, solution)
     
+
+def main():
+    arr = [0,5,3]
+    file_name = 'binga'
+    locations_path = './cache/' + file_name + '_locations.pkl'
+
+    with open(locations_path, 'wb') as file:
+        pickle.dump(arr, file)
+
+
 if __name__ == "__main__":
-    solver()
+    main()
