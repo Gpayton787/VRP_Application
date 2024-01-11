@@ -1,6 +1,7 @@
 from PyPDF2 import PdfReader
 import re
 from utils.time import standard_to_minutes
+import config
 
 #Processes and returns the pdf file as a dictionary
 def create_trip_dict(path):
@@ -8,7 +9,7 @@ def create_trip_dict(path):
     raw_data = {}
     addresses = [] #List of addresses
     #Add depot to addresses
-    addresses.append("1005 Columbus Way Lemoore, CA 93245")
+    addresses.append(config.DEPOT_ADDRESS)
     trips_dict = {} # Maps ID to trip info
     trips_list = [] #List of trips
     edges = [] #List the edges between pick up and drop off nodes
@@ -17,7 +18,7 @@ def create_trip_dict(path):
     #Add depot to time windows
     time_windows.append([0, 100])
     address_to_index = {} #Maps the address to its index in the address list
-    address_to_index["1005 Columbus Way Lemoore, CA 93245"] = 0
+    address_to_index[config.DEPOT_ADDRESS] = 0
     for page in reader.pages:
         #Extract text from page
         text = page.extract_text()
