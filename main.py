@@ -4,6 +4,9 @@ from solver import create_data_model, solver
 from utils.helper import check_validity
 from utils.pdf import create_pdf
 
+#Define global variables 
+service_area = ['']
+
 
 #Main entry point for the application
 def main():
@@ -20,7 +23,6 @@ def main():
     raw_data = create_trip_dict(file_path)
     #Create the data model for the solver
     data = create_data_model(raw_data, num_vehicles, capacity)
-
     #Process the data
     invalid_trips = check_validity(data["matrix"], data["address_to_index"], data["trips_dict"])
     print("Invalid Trips: ", invalid_trips)
@@ -55,15 +57,6 @@ def main():
         print(f"Route {i} Instructions: ")
         print(instructions) 
         print("---"*10)
-
-    
-
-
-
-
-
-    
-
     return 
    
 

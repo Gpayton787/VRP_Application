@@ -27,28 +27,51 @@ def create_trip_dict(path):
         trip_blocks = trip_blocks[1:]
         for block in trip_blocks:
             lines = block.split('\n')
+            #Get rid of empty elements
             trip_info = [line.strip() for line in lines if line.strip()]
-            if '** CANCELED **' in trip_info[0]:
+            line1 = re.split(r' {3,}', trip_info[0])
+            if line1[1] == '** CANCELED **':
                 continue
-            id = trip_info[0].split(' ')[0]
-            pattern = r"^([A-Z]+[\s-])*([A-Z]+,)*\s([A-Z])+([\s-][A-Z]+)*"
-            match = re.search(pattern, trip_info[1])
-            name = ""
-            if match:
-                name = match.group(0)
+            id = line1[0]
+            line2 = re.split(r' {3,}', trip_info[1])
+            name = line2[0]
+            line3 = trip_info[2]
+            m = re.match(r'[0-9][0-9]:[0-9][0-9]', line3)
+            if m:
+                pu_time = m.group(0)
             else:
-                raise ValueError(f"Error: Cannot find name for trip {id}")
-            pick_up_time= trip_info[2].split(' ')[0]
-            pick_up_location = trip_info[3].strip() + " " + trip_info[4].strip()
-            drop_off_time = trip_info[5].split(' ')[0]
-            drop_off_location = trip_info[6].strip() + " " + trip_info[7].strip()
+                raise Exception("No pickup time found")
+            pu_loc = trip_info[3] + " " + trip_info[4]
+            line6 = trip_info[5]
+            m = re.match(r'[0-9][0-9]:[0-9][0-9]', line6 )
+            if m:
+                do_time = m.group(0)
+            else:
+                raise Exception("No dropoff time found")
+            do_loc = trip_info[6] + " " + trip_info[7]
+            #Get LOS and Miles
+            line9 = trip_info[8]
+            los = ''
+            miles = ''
+            m = re.match(r'LOS: \w{0,3}', line9)
+            if m:
+                los = m.group(0).split(' ')[1]
+            else:
+                raise Exception("No LOS")
+            m = re.search(r'Miles: (0|[1-9]\d*)(\.\d+)?', line9)
+            if m:
+                miles = m.group(0).split(' ')[1]
+            else:
+                raise Exception("No Miles")
             trip = {
                 "name": name,
-                "pick_up_time": pick_up_time,
-                "pick_up_location": pick_up_location,
-                "drop_off_time": drop_off_time,
-                "drop_off_location": drop_off_location,
-                "index": len(trips_list) #basically this index matches the trip to its corresponding edge
+                "pick_up_time": pu_time,
+                "pick_up_location": pu_loc,
+                "drop_off_time": do_time,
+                "drop_off_location": do_loc,
+                "index": len(trips_list), #basically this index matches the trip to its corresponding edge
+                "los": los,
+                "miles": miles,
             }
             trips_dict[id] = trip
             #ONLY ADD WCALLS TO TRIP_DICT, this cannot mess up indexing
@@ -57,11 +80,11 @@ def create_trip_dict(path):
                 continue
             trips_list.append(id)
             #Populate address_to_index dict for adding edges
-            if pick_up_location not in address_to_index:
-                address_to_index[pick_up_location] = len(address_to_index)
-            if drop_off_location not in address_to_index:
-                address_to_index[drop_off_location] = len(address_to_index)
-            edges.append([address_to_index[pick_up_location], address_to_index[drop_off_location]])
+            if pu_loc not in address_to_index:
+                address_to_index[pu_loc] = len(address_to_index)
+            if do_loc not in address_to_index:
+                address_to_index[do_loc] = len(address_to_index)
+            edges.append([address_to_index[pu_loc], address_to_index[do_loc]])
             #Create time windows for each location, there are two per edge
             #Convert standard time to minutes
             pick_up_time = standard_to_minutes(pick_up_time)
@@ -69,7 +92,6 @@ def create_trip_dict(path):
             #Must arrive within 30 mins before pickup time
             time_windows.append([pick_up_time-10, pick_up_time+10])
             time_windows.append([drop_off_time-10, drop_off_time+10])
-
     raw_data["trips_list"] = trips_list
     raw_data["trips_dict"] = trips_dict
     raw_data["addresses"] = list(address_to_index.keys())
@@ -83,12 +105,8 @@ def create_trip_dict(path):
 def main():
     path = "trips2.pdf"
     data = create_trip_dict(path)
+    return 0
 if __name__ == "__main__":
     main()
 
-#TEXT MUST FOLLOW THE FORMAT OF THE EXAMPLE PDF
-def process_text(text):
-    for line in text:
-        if '** NEW **' in line:
-            pass
 

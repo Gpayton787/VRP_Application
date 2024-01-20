@@ -3,4 +3,4 @@ config.py
 *.pdf
 cache
 output_data
-
+.DS_Store
