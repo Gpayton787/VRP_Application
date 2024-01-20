@@ -15,16 +15,18 @@ def standard_to_minutes(time):
     return total_minutes
 
 #Returns necessary node information to model the problem
-def create_node_mapping(edges):
+def create_node_mapping(edges, edge_los):
     node_data = {}
     #map duplicate nodes to their actual location
     node_to_index = {}
     # map nodes to their corresponding trip
     node_to_trip = {}
     #Record whether a node is a pick-up or drop-off
-    node_to_demand = {} #Can be either 1 or -1
+    node_to_demand_A = {} #Can be either 1, -1, or 0
+    node_to_demand_W = {} #Can be either 1, -1, or 0
     #Depot has demand 0
-    node_to_demand[0] = 0
+    node_to_demand_A[0] = 0
+    node_to_demand_W[0] = 0
     #Store new unique edge list
     new_edges = []
     #Keep track of indexes

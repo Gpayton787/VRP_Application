@@ -14,7 +14,6 @@ height = 7
 
 def does_file_exist(path):
     return os.path.exists(path)
- 
 
 def index_to_trip_id(index, data):
     if index == 0:
@@ -152,13 +151,14 @@ def create_data_model(raw_data, num_vehicles, capacity):
     data["trips_dict"] = raw_data["trips_dict"]
     data["num_vehicles"] = num_vehicles
     data["depot"] = 0
-    node_data = create_node_mapping(raw_data["edges"])
+    node_data = create_node_mapping(raw_data["edges"], raw_data["edge_los"])
     data["pickups_deliveries"] = node_data["new_edges"]
     data["num_nodes"] = node_data["num_nodes"]
     data["node_to_index"] = node_data["node_to_index"]
     data["node_to_trip"] = node_data["node_to_trip"]
     data["demands"] = node_data["node_to_demand"]
     data["vehicle_capacities"] = capacity
+    data["wheelchair_capacities"] = 1
     data["time_windows"] = raw_data["time_windows"]
     #Check if matrix and locations have already been created
     file_name = raw_data["file_name"]
@@ -208,21 +208,39 @@ def solver(data):
      # Define cost of each arc.
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
-    # Add Capacity constraint.
-    def demand_callback(from_index):
+    # Add Capacity constraint (A/ADD patients)
+    def demand_callback1(from_index):
         """Returns the demand of the node."""
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
         return data["demands"][from_node]
 
-    demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+    demand_callback_index1 = routing.RegisterUnaryTransitCallback(demand_callback1)
     routing.AddDimension(
-        demand_callback_index,
+        demand_callback_index1,
         0,  # null capacity slack
         data["vehicle_capacities"],  # vehicle maximum capacities
         True,  # start cumul to zero
-        "Capacity",
+        "A-Capacity",
     )
+
+    #Add a second capacity contraint 
+    def demand_callback2(from_index):
+        """Returns the demand of the node."""
+        # Convert from routing variable Index to demands NodeIndex.
+        from_node = manager.IndexToNode(from_index)
+        return data["demands"][from_node]
+    
+    demand_callback_index2 = routing.RegisterUnaryTransitCallback(demand_callback2)
+    routing.AddDimension(
+        demand_callback_index2,
+        0,
+        data["wheelchair_capacities"],
+        True,
+        "W-capacity",
+    )
+        
+    
 
     # Add Time Windows constraint.
     time = "Time"
