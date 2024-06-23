@@ -87,7 +87,8 @@ def create_response_object(data, manager, routing, solution):
         route_instructions = []
         while not routing.IsEnd(index):
             time_var = time_dimension.CumulVar(index)
-            route_load += data["demands"][manager.IndexToNode(index)]
+            route_load += data["demands_A"][manager.IndexToNode(index)]
+            route_load += data["demands_W"][manager.IndexToNode(index)]
             trip_id = index_to_trip_id(manager.IndexToNode(index), data)
             time_window = [minutes_to_standard(solution.Min(time_var)), minutes_to_standard(solution.Max(time_var))]
             load = route_load
@@ -124,7 +125,8 @@ def print_solution(data, manager, routing, solution):
         route_load = 0
         while not routing.IsEnd(index):
             time_var = time_dimension.CumulVar(index)
-            route_load += data["demands"][manager.IndexToNode(index)]
+            route_load += data["demands_A"][manager.IndexToNode(index)]
+            route_load += data["demands_W"][manager.IndexToNode(index)]
             plan_output += (
                 f"{index_to_trip_id(manager.IndexToNode(index), data)}"
                 f" Time({minutes_to_standard(solution.Min(time_var))},{minutes_to_standard(solution.Max(time_var))})"
@@ -156,7 +158,8 @@ def create_data_model(raw_data, num_vehicles, capacity):
     data["num_nodes"] = node_data["num_nodes"]
     data["node_to_index"] = node_data["node_to_index"]
     data["node_to_trip"] = node_data["node_to_trip"]
-    data["demands"] = node_data["node_to_demand"]
+    data["demands_A"] = node_data["node_to_demand_A"]
+    data["demands_W"] = node_data["node_to_demand_W"]
     data["vehicle_capacities"] = capacity
     data["wheelchair_capacities"] = 1
     data["time_windows"] = raw_data["time_windows"]
@@ -213,7 +216,7 @@ def solver(data):
         """Returns the demand of the node."""
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
-        return data["demands"][from_node]
+        return data["demands_A"][from_node]
 
     demand_callback_index1 = routing.RegisterUnaryTransitCallback(demand_callback1)
     routing.AddDimension(
@@ -229,7 +232,7 @@ def solver(data):
         """Returns the demand of the node."""
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
-        return data["demands"][from_node]
+        return data["demands_W"][from_node]
     
     demand_callback_index2 = routing.RegisterUnaryTransitCallback(demand_callback2)
     routing.AddDimension(
@@ -239,7 +242,6 @@ def solver(data):
         True,
         "W-capacity",
     )
-        
     
 
     # Add Time Windows constraint.
@@ -305,7 +307,7 @@ def solver(data):
     # return create_response_object(data, manager, routing, solution)
 
     if solution:
-        print_solution(data, manager, routing, solution)
+        # print_solution(data, manager, routing, solution)
         print(routing.status())
         # plot_solution(data["locations"], solution, manager, routing, data)
     else:
@@ -315,12 +317,7 @@ def solver(data):
     
 
 def main():
-    arr = [0,5,3]
-    file_name = 'binga'
-    locations_path = './cache/' + file_name + '_locations.pkl'
-
-    with open(locations_path, 'wb') as file:
-        pickle.dump(arr, file)
+    return
 
 
 if __name__ == "__main__":

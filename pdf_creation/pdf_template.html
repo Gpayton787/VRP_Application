@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My PDF Template</title>
+    <style>
+        /* Add your CSS styles here */
+    </style>
+</head>
+<body>
+    <h1>{{date}} </h1>
+    <p>
+            <p>Total Trips: {{trip_count}} (Not including Wcalls and Invalid LOS)</p>
+            <p>Dropped Trips: {{dropped_trips}}</p>
+            <p>Invalid Trips:</p>
+    <ul>
+        {% for trip in invalid_trips %}
+            <li>{{ trip[0] }} takes {{trip[1]}} mins, but only {{trip[2]}} given...</li>
+        {% endfor %}
+    </ul>
+    <p>Wcalls:</p>
+    <ul>
+        {% for wcall in wcalls %}
+            <li>{{ wcall }} </li>
+        {% endfor %}
+    </ul>
+    <p>Invalid LOS:</p>
+    <ul>
+        {% for los in invalid_los %}
+            <li>{{ los }} </li>
+        {% endfor %}
+    </p>
+
+    <p>Driver Assignments:</p>
+    {% for route in routes %}
+        <p>Route {{loop.index}}: </p>
+        {% for node in route %}
+            {{node}} ->
+        {% endfor %}
+    {% endfor %}
+
+
+
+
+
+
+
+</body>
+</html>

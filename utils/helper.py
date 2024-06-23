@@ -43,7 +43,12 @@ def create_node_mapping(edges, edge_los):
             seen.add(index)
             node_to_index[index] = edge[0]
             new_edge.append(index)
-        node_to_demand[new_edge[-1]] = 1
+        if edge_los[i] == 'A' or edge_los[i] == 'ADD':
+            node_to_demand_A[new_edge[-1]] = 1
+            node_to_demand_W[new_edge[-1]] = 0
+        else:
+            node_to_demand_A[new_edge[-1]] = 0
+            node_to_demand_W[new_edge[-1]] = 1
         if edge[1] not in seen:
             seen.add(edge[1])
             new_edge.append(edge[1])
@@ -52,7 +57,12 @@ def create_node_mapping(edges, edge_los):
             seen.add(index)
             node_to_index[index] = edge[1]
             new_edge.append(index)
-        node_to_demand[new_edge[-1]] = -1
+        if edge_los[i] == 'A' or edge_los[i] == 'ADD':
+            node_to_demand_A[new_edge[-1]] = -1
+            node_to_demand_W[new_edge[-1]] = 0
+        else:
+            node_to_demand_A[new_edge[-1]] = 0
+            node_to_demand_W[new_edge[-1]] = -1
         new_edges.append(new_edge)
         node_to_trip[new_edge[0]] = i
         node_to_trip[new_edge[1]] = i
@@ -60,9 +70,9 @@ def create_node_mapping(edges, edge_los):
     node_data["node_to_index"] = node_to_index
     #Add one to account for 0 index (depot)
     node_data["num_nodes"] = len(seen)+1
-    node_data["node_to_demand"] = node_to_demand
+    node_data["node_to_demand_A"] = node_to_demand_A
+    node_data["node_to_demand_W"] = node_to_demand_W
     node_data["node_to_trip"] = node_to_trip
-
     return node_data
 
 def build_address_str(addresses):
@@ -205,11 +215,11 @@ def get_coordinates(addresses):
             print("Error calling Geocoding API: " + response.status_code)
     return coordinates
 
-#Check whether pickup and dropoff times are possible
+#Check whether pickup and dropoff times are possible, returns a 2d list [[trip_id, time it should take, travel time allowed]]
 def check_validity(matrix, address_to_index, trips_dict):
     invalid_trips = []
     for id, trip in trips_dict.items():
-        if trip["pick_up_time"] == 'WCall':
+        if trip["pick_up_time"] == 'WCall' or trip["los"] == 'S':
             continue
         pickup = standard_to_minutes(trip["pick_up_time"])
         dropoff = standard_to_minutes(trip["drop_off_time"])
@@ -220,3 +230,19 @@ def check_validity(matrix, address_to_index, trips_dict):
         if time_difference < travel_time:
             invalid_trips.append([id, travel_time, time_difference])
     return invalid_trips
+
+def fix_invalid_trips(invalid_trips, data):
+    for trip in invalid_trips:
+        id = trip[0]
+        t_needed = trip[1]
+        t_given = trip[2]
+        t_still_needed = t_needed - t_given #This number is > 0
+        slack = 20
+        #Minutes still needed to be allocated
+        mins = t_still_needed - slack
+        #Get the index of the corresponding time_window
+        index = data["trips_dict"][id]["index"]
+        if mins > 0:
+            #Add remaining minutes needed if there are any to the pickup time
+            data["time_windows"][index*2+2][1] = data["time_windows"][index*2+2][1] + mins
+

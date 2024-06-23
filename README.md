@@ -10,3 +10,9 @@ It's a generalization of the classic VRP problem to a specific case
 - It also includes the common Capacitated, Pick-up and Delivery, Time window constraints.
 
 Thanks to the Google OR team for creating and maintaining such a useful tool.
+
+
+
+
+Step 1. Processing
+    In order to use the solver we need to process our problem data. 

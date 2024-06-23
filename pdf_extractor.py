@@ -16,6 +16,7 @@ def create_trip_dict(path):
     edge_los = []
     time_windows = [] #Time windows for each node
     wcalls = []
+    invalid_los = []
     #Add depot to time windows
     time_windows.append([0, 100])
     address_to_index = {} #Maps the address to its index in the address list
@@ -91,6 +92,10 @@ def create_trip_dict(path):
             if pu_time == 'WCall':
                 wcalls.append(id)
                 continue
+            #ONLY ADD S LOS TO TRIP_DICT, not a part of solving
+            if los != 'A' and los != 'ADD' and los != 'W':
+                invalid_los.append(id)
+                continue
             trips_list.append(id)
             #Populate address_to_index dict for adding edges
             if pu_loc not in address_to_index:
@@ -114,6 +119,7 @@ def create_trip_dict(path):
     raw_data["time_windows"] = time_windows
     raw_data["address_to_index"] = address_to_index
     raw_data["wcalls"] = wcalls
+    raw_data["invalid_los"] = invalid_los
     raw_data["file_name"] = path.split('.')[0]
     raw_data["date"] = date
     return raw_data
@@ -126,6 +132,7 @@ def main():
     print(len(raw_data["edge_los"]))
     print(raw_data["date"])
     print(len(raw_data["trips_list"]))
+    print(raw_data["invalid_los"])
 
     return 0
 if __name__ == "__main__":
