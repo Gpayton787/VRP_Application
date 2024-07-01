@@ -106,8 +106,18 @@ def build_matrix(response, type):
     return matrix
 
 
-#Arguments: A list of addresses, the type of matrix (either distance or time) returns time in minutes
+#Creates a distance or time matrix with the given addresses
 def create_matrix(addresses, type):
+    #Check if this matrix has already been created and is in the cache
+     if check_cache():
+        matrix = get_cache()
+        return matrix
+     else:
+        matrix = create_matrix_helper(addresses, type)
+        save_cache(matrix)
+        return matrix
+     
+def create_matrix_helper(addresses, type):
     # Distance Matrix API only accepts 100 elements per request, so get rows in multiple requests.
     max_elements = 100
     max_addresses = 25

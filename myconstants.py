@@ -1,0 +1,2 @@
+PICKUP = True
+DROPOFF = False

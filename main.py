@@ -12,7 +12,7 @@ service_area = []
 num_vehicles = 0
 capacity = 0
 wheelchair = False
-expected_columns = ["pickup_time", "pickup_address", "dropoff_time", "dropoff_address", "los", "miles", "num_vehicles", "capacity", "service_area", "date", "depot"]
+expected_columns = ["trip_id", "name", "pickup_time", "pickup_address", "dropoff_time", "dropoff_address", "los", "miles", "num_vehicles", "capacity", "service_area", "date", "depot"]
 
 
 def main():
@@ -36,9 +36,10 @@ def main():
         if col not in df.columns.to_list():
             print(f"Column {col} is missing")
             return
-    
+        
+    print(df)
     #Process the data for modeling
-    proccess_data(df)
+    # proccess_data(df)
 
 
     return
